@@ -1,4 +1,4 @@
-enum PetMood { idle, petted }
+enum PetMood { idle, petted, draggingLeft, draggingRight }
 
 class PetState {
   const PetState({required this.mood});

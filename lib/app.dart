@@ -9,10 +9,11 @@ class MeiTuanDeskPetApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'MeiTuanDeskPet',
+      color: Colors.transparent,
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Center(child: PetWidget()),
+      home: ColoredBox(
+        color: Colors.transparent,
+        child: Center(child: PetWidget()),
       ),
     );
   }

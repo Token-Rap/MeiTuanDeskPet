@@ -1,90 +1,176 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'pet_state.dart';
 
-class PetView extends StatelessWidget {
+const String _kWhiteCatSpritesheet =
+    'assets/animations/white-cat-bow.webp';
+const int _kCellWidth = 192;
+const int _kCellHeight = 208;
+const int _kAtlasColumns = 8;
+
+class PetView extends StatefulWidget {
   const PetView({super.key, required this.mood});
 
   final PetMood mood;
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) => ScaleTransition(
-        scale: Tween<double>(begin: 0.92, end: 1).animate(animation),
-        child: FadeTransition(opacity: animation, child: child),
-      ),
-      child: _PetSprite(
-        key: ValueKey(mood),
-        mood: mood,
-      ),
-    );
-  }
+  State<PetView> createState() => _PetViewState();
 }
 
-class _PetSprite extends StatelessWidget {
-  const _PetSprite({super.key, required this.mood});
+class _PetViewState extends State<PetView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Future<ui.Image> _spritesheet;
 
-  final PetMood mood;
+  _AnimationSpec get _spec => switch (widget.mood) {
+        PetMood.idle => const _AnimationSpec(row: 0, frames: 1),
+        PetMood.petted => const _AnimationSpec(
+            row: 3,
+            frames: 4,
+            loops: false,
+          ),
+        PetMood.draggingRight => const _AnimationSpec(row: 1, frames: 8),
+        PetMood.draggingLeft => const _AnimationSpec(row: 2, frames: 8),
+      };
+
+  @override
+  void initState() {
+    super.initState();
+    _spritesheet = _loadSpritesheet();
+    _controller = AnimationController(
+      vsync: this,
+      duration: _spec.duration,
+    );
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(PetView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.mood == widget.mood) return;
+    _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    final spec = _spec;
+    _controller.duration = spec.duration;
+    if (spec.isAnimated && spec.loops) {
+      _controller
+        ..forward(from: 0)
+        ..repeat();
+    } else if (spec.isAnimated) {
+      _controller.forward(from: 0);
+    } else {
+      _controller
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final palette = _palette(mood);
-    final label = mood == PetMood.petted ? '摸摸 ♥' : '美团';
+    return FutureBuilder<ui.Image>(
+      future: _spritesheet,
+      builder: (context, snapshot) {
+        final image = snapshot.data;
+        if (image == null) {
+          return const SizedBox.square(dimension: 208);
+        }
 
-    return Container(
-      width: 200,
-      height: 200,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [palette.highlight, palette.base],
-          radius: 0.85,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: palette.base.withValues(alpha: 0.45),
-            blurRadius: 24,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: mood == PetMood.petted ? 26 : 30,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-          ),
-        ),
-      ),
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final spec = _spec;
+            final rawFrame = spec.isAnimated
+                ? (_controller.value * spec.frames).floor()
+                : 0;
+            final frame = spec.loops
+                ? rawFrame % spec.frames
+                : rawFrame.clamp(0, spec.frames - 1);
+
+            return CustomPaint(
+              size: const Size(208, 208),
+              painter: _PetSpritePainter(
+                spritesheet: image,
+                row: spec.row,
+                frame: frame,
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  _Palette _palette(PetMood mood) {
-    switch (mood) {
-      case PetMood.idle:
-        return const _Palette(
-          base: Color(0xFFFFC107),
-          highlight: Color(0xFFFFE082),
-        );
-      case PetMood.petted:
-        return const _Palette(
-          base: Color(0xFFFF7043),
-          highlight: Color(0xFFFFAB91),
-        );
-    }
+  Future<ui.Image> _loadSpritesheet() async {
+    final data = await rootBundle.load(_kWhiteCatSpritesheet);
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final frame = await codec.getNextFrame();
+    return frame.image;
   }
 }
 
-class _Palette {
-  const _Palette({required this.base, required this.highlight});
+class _PetSpritePainter extends CustomPainter {
+  const _PetSpritePainter({
+    required this.spritesheet,
+    required this.row,
+    required this.frame,
+  });
 
-  final Color base;
-  final Color highlight;
+  final ui.Image spritesheet;
+  final int row;
+  final int frame;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final source = Rect.fromLTWH(
+      (frame % _kAtlasColumns) * _kCellWidth.toDouble(),
+      row * _kCellHeight.toDouble(),
+      _kCellWidth.toDouble(),
+      _kCellHeight.toDouble(),
+    );
+    final fitted = applyBoxFit(
+      BoxFit.contain,
+      const Size(_kCellWidth * 1.0, _kCellHeight * 1.0),
+      size,
+    );
+    final destination = Alignment.center.inscribe(
+      fitted.destination,
+      Offset.zero & size,
+    );
+
+    canvas.drawImageRect(spritesheet, source, destination, Paint());
+  }
+
+  @override
+  bool shouldRepaint(_PetSpritePainter oldDelegate) {
+    return oldDelegate.spritesheet != spritesheet ||
+        oldDelegate.row != row ||
+        oldDelegate.frame != frame;
+  }
+}
+
+class _AnimationSpec {
+  const _AnimationSpec({
+    required this.row,
+    required this.frames,
+    this.loops = true,
+  });
+
+  final int row;
+  final int frames;
+  final bool loops;
+
+  bool get isAnimated => frames > 1;
+
+  Duration get duration => Duration(milliseconds: frames * 140);
 }

@@ -17,6 +17,8 @@ class PetWidget extends StatefulWidget {
 class _PetWidgetState extends State<PetWidget> {
   final PetController _controller = PetController();
 
+  Offset? _dragStartGlobal;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -26,10 +28,29 @@ class _PetWidgetState extends State<PetWidget> {
   bool get _isDesktop =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
-  void _onPanStart(DragStartDetails _) {
+  Future<void> _onPanStart(DragStartDetails details) async {
+    _controller.startDrag();
+    _dragStartGlobal = details.globalPosition;
     if (_isDesktop) {
-      windowManager.startDragging();
+      await windowManager.startDragging();
     }
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    final dragStartGlobal = _dragStartGlobal;
+    if (dragStartGlobal != null) {
+      _controller.updateDrag(details.globalPosition.dx - dragStartGlobal.dx);
+    }
+  }
+
+  void _onPanEnd(DragEndDetails _) {
+    _dragStartGlobal = null;
+    _controller.endDrag();
+  }
+
+  void _onPanCancel() {
+    _dragStartGlobal = null;
+    _controller.endDrag();
   }
 
   @override
@@ -41,6 +62,9 @@ class _PetWidgetState extends State<PetWidget> {
           behavior: HitTestBehavior.opaque,
           onTap: _controller.pet,
           onPanStart: _onPanStart,
+          onPanUpdate: _onPanUpdate,
+          onPanEnd: _onPanEnd,
+          onPanCancel: _onPanCancel,
           child: PetView(mood: state.mood),
         );
       },

@@ -44,6 +44,23 @@ flutter run -d windows
 flutter run -d linux
 ```
 
+## Release Builds
+
+GitHub Actions builds packaged releases from tags and manual workflow runs.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow uploads:
+
+- macOS: `.dmg` installer and `.zip` app bundle
+- Windows: `.exe` installer and `.zip` portable package
+- Linux: `.deb` package and `.tar.gz` portable bundle
+
+Release notes live under `release-notes/`. A tag named `v0.1.0` uses `release-notes/v0.1.0.md`; otherwise the workflow falls back to `release-notes/default.md`.
+
 ## Tech Stack
 
 - Flutter 3.x (Dart 3.11+)

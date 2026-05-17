@@ -42,6 +42,23 @@ flutter run -d windows
 flutter run -d linux
 ```
 
+## 发布构建
+
+GitHub Actions 支持通过 tag 或手动触发构建发布版本。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+发布流程会上传：
+
+- macOS：`.dmg` 安装包和 `.zip` 应用包
+- Windows：`.exe` 安装包和 `.zip` 免安装包
+- Linux：`.deb` 安装包和 `.tar.gz` 免安装包
+
+Release note 放在 `release-notes/` 下。比如 `v0.1.0` 会使用 `release-notes/v0.1.0.md`；没有匹配文件时会回退到 `release-notes/default.md`。
+
 ## 技术栈
 
 - Flutter 3.x（Dart 3.11+）

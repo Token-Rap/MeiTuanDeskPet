@@ -7,7 +7,7 @@ import 'pet_state.dart';
 class PetController extends ValueNotifier<PetState> {
   PetController() : super(PetState.initial);
 
-  static const Duration _petDuration = Duration(milliseconds: 620);
+  static const Duration _petDuration = Duration(milliseconds: 1200);
   static const double _dragDirectionThreshold = 18;
 
   Timer? _revertTimer;

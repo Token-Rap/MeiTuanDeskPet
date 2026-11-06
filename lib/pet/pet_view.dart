@@ -6,19 +6,24 @@ import 'package:flutter/services.dart';
 
 import 'pet_state.dart';
 
-const String _kWhiteCatSpritesheet =
-    'assets/animations/white-cat-bow.webp';
-const String _kWhiteCatSleepSpritesheet =
-    'assets/animations/white-cat-sleep.png';
-const int _kCellWidth = 192;
-const int _kCellHeight = 208;
-const int _kAtlasColumns = 8;
+enum PetCat {
+  xiaotuan('小团', 'assets/animations/xiaotuan-v2.png', 208),
+  xiaomei('小美', 'assets/animations/xiaomei-v2.png', 184);
+
+  const PetCat(this.label, this.asset, this.displaySize);
+  final String label;
+  final String asset;
+  final double displaySize;
+}
+
+const int _kAtlasColumns = 4;
 const Duration _kIdleSleepPause = Duration(minutes: 25);
 
 class PetView extends StatefulWidget {
-  const PetView({super.key, required this.mood});
+  const PetView({super.key, required this.mood, this.cat = PetCat.xiaotuan});
 
   final PetMood mood;
+  final PetCat cat;
 
   @override
   State<PetView> createState() => _PetViewState();
@@ -27,38 +32,36 @@ class PetView extends StatefulWidget {
 class _PetViewState extends State<PetView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Future<_SpriteImages> _spritesheets;
+  late Future<ui.Image> _spritesheet;
   Timer? _idleSleepTimer;
   bool _isPlayingIdleSleepMotion = false;
 
   _AnimationSpec get _spec => switch (widget.mood) {
         PetMood.idle => _isPlayingIdleSleepMotion
             ? const _AnimationSpec(
-                sheet: _SpriteSheet.sleep,
-                row: 0,
-                frames: 6,
+                row: 3,
+                frames: 4,
                 frameDuration: Duration(milliseconds: 520),
                 loops: false,
               )
             : const _AnimationSpec(
-                sheet: _SpriteSheet.sleep,
-                row: 0,
+                row: 3,
                 frames: 1,
               ),
         PetMood.petted => const _AnimationSpec(
-            row: 3,
+            row: 1,
             frames: 4,
             frameDuration: Duration(milliseconds: 260),
             loops: false,
           ),
-        PetMood.draggingRight => const _AnimationSpec(row: 1, frames: 8),
-        PetMood.draggingLeft => const _AnimationSpec(row: 2, frames: 8),
+        PetMood.draggingRight => const _AnimationSpec(row: 2, frames: 4),
+        PetMood.draggingLeft => const _AnimationSpec(row: 2, frames: 4),
       };
 
   @override
   void initState() {
     super.initState();
-    _spritesheets = _loadSpritesheets();
+    _spritesheet = _loadImage(widget.cat.asset);
     _controller = AnimationController(
       vsync: this,
       duration: _spec.duration,
@@ -69,7 +72,10 @@ class _PetViewState extends State<PetView>
   @override
   void didUpdateWidget(PetView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.mood == widget.mood) return;
+    if (oldWidget.cat != widget.cat) {
+      _spritesheet = _loadImage(widget.cat.asset);
+    }
+    if (oldWidget.mood == widget.mood && oldWidget.cat == widget.cat) return;
     _syncAnimation();
   }
 
@@ -128,11 +134,11 @@ class _PetViewState extends State<PetView>
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<_SpriteImages>(
-      future: _spritesheets,
+    return FutureBuilder<ui.Image>(
+      future: _spritesheet,
       builder: (context, snapshot) {
-        final images = snapshot.data;
-        if (images == null) {
+        final spritesheet = snapshot.data;
+        if (spritesheet == null) {
           return const SizedBox.square(dimension: 208);
         }
 
@@ -147,34 +153,20 @@ class _PetViewState extends State<PetView>
             final currentFrame = spec.loops
                 ? currentRawFrame % spec.frames
                 : currentRawFrame.clamp(0, spec.frames - 1);
-            final nextRawFrame = currentRawFrame + 1;
-            final nextFrame = spec.loops
-                ? nextRawFrame % spec.frames
-                : nextRawFrame.clamp(0, spec.frames - 1);
-            final blend = spec.isAnimated
-                ? Curves.easeInOut.transform(framePosition.frac())
-                : 0.0;
-
             return CustomPaint(
-              size: const Size(208, 208),
+              size: Size.square(widget.cat.displaySize),
               painter: _PetSpritePainter(
-                spritesheet: images.forSheet(spec.sheet),
+                spritesheet: spritesheet,
                 row: spec.row,
                 frame: currentFrame,
-                nextFrame: nextFrame,
-                blend: currentFrame == nextFrame ? 0 : blend,
+                flip: widget.mood == PetMood.draggingLeft,
+                cat: widget.cat,
               ),
             );
           },
         );
       },
     );
-  }
-
-  Future<_SpriteImages> _loadSpritesheets() async {
-    final main = await _loadImage(_kWhiteCatSpritesheet);
-    final sleep = await _loadImage(_kWhiteCatSleepSpritesheet);
-    return _SpriteImages(main: main, sleep: sleep);
   }
 
   Future<ui.Image> _loadImage(String asset) async {
@@ -190,21 +182,21 @@ class _PetSpritePainter extends CustomPainter {
     required this.spritesheet,
     required this.row,
     required this.frame,
-    required this.nextFrame,
-    required this.blend,
+    required this.flip,
+    required this.cat,
   });
 
   final ui.Image spritesheet;
   final int row;
   final int frame;
-  final int nextFrame;
-  final double blend;
+  final bool flip;
+  final PetCat cat;
 
   @override
   void paint(Canvas canvas, Size size) {
     final fitted = applyBoxFit(
       BoxFit.contain,
-      const Size(_kCellWidth * 1.0, _kCellHeight * 1.0),
+      Size(spritesheet.width / 4, spritesheet.height / 4),
       size,
     );
     final destination = Alignment.center.inscribe(
@@ -212,10 +204,13 @@ class _PetSpritePainter extends CustomPainter {
       Offset.zero & size,
     );
 
-    _drawFrame(canvas, destination, frame, 1 - blend);
-    if (blend > 0) {
-      _drawFrame(canvas, destination, nextFrame, blend);
+    canvas.save();
+    if (flip) {
+      canvas.translate(size.width, 0);
+      canvas.scale(-1, 1);
     }
+    _drawFrame(canvas, destination, frame, 1);
+    canvas.restore();
   }
 
   void _drawFrame(
@@ -224,11 +219,16 @@ class _PetSpritePainter extends CustomPainter {
     int frame,
     double opacity,
   ) {
+    // Generated rows have slightly different vertical spacing. Use their
+    // measured boundaries so paws are not cut at an assumed quarter line.
+    final rowEdges = cat == PetCat.xiaotuan
+        ? const [0.0, 0.265, 0.52, 0.76, 1.0]
+        : const [0.0, 0.25, 0.51, 0.76, 1.0];
     final source = Rect.fromLTWH(
-      (frame % _kAtlasColumns) * _kCellWidth.toDouble(),
-      row * _kCellHeight.toDouble(),
-      _kCellWidth.toDouble(),
-      _kCellHeight.toDouble(),
+      (frame % _kAtlasColumns) * (spritesheet.width / 4),
+      rowEdges[row] * spritesheet.height,
+      (spritesheet.width / 4),
+      (rowEdges[row + 1] - rowEdges[row]) * spritesheet.height,
     );
     canvas.drawImageRect(
       spritesheet,
@@ -243,8 +243,8 @@ class _PetSpritePainter extends CustomPainter {
     return oldDelegate.spritesheet != spritesheet ||
         oldDelegate.row != row ||
         oldDelegate.frame != frame ||
-        oldDelegate.nextFrame != nextFrame ||
-        oldDelegate.blend != blend;
+        oldDelegate.flip != flip ||
+        oldDelegate.cat != cat;
   }
 }
 
@@ -252,13 +252,11 @@ class _AnimationSpec {
   const _AnimationSpec({
     required this.row,
     required this.frames,
-    this.sheet = _SpriteSheet.main,
     this.frameDuration = const Duration(milliseconds: 140),
     this.loops = true,
   });
 
   final int row;
-  final _SpriteSheet sheet;
   final int frames;
   final Duration frameDuration;
   final bool loops;
@@ -266,22 +264,4 @@ class _AnimationSpec {
   bool get isAnimated => frames > 1;
 
   Duration get duration => frameDuration * frames;
-}
-
-enum _SpriteSheet { main, sleep }
-
-class _SpriteImages {
-  const _SpriteImages({required this.main, required this.sleep});
-
-  final ui.Image main;
-  final ui.Image sleep;
-
-  ui.Image forSheet(_SpriteSheet sheet) => switch (sheet) {
-        _SpriteSheet.main => main,
-        _SpriteSheet.sleep => sleep,
-      };
-}
-
-extension on double {
-  double frac() => this - floorToDouble();
 }

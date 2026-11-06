@@ -1,0 +1,40 @@
+name: Windows cat preview
+on:
+  push:
+    branches: [preview/windows-cats]
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build windows --release --build-name 0.2.0 --build-number ${{ github.run_number }}
+      - name: Package installer and portable ZIP
+        shell: pwsh
+        run: |
+          choco install innosetup --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force -Path dist/windows | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/windows/MeiTuanDeskPet-windows-x64-preview.zip
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion="0.2.0" installer/windows/MeiTuanDeskPet.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-cat-preview
+          path: dist/windows/*
+          if-no-files-found: error
+      - name: Publish preview download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v0.2.0-preview.${GITHUB_RUN_NUMBER}" dist/windows/* --target "$GITHUB_SHA" --prerelease --title "Windows 双猫预览 ${GITHUB_RUN_NUMBER}" --notes-file release-notes/windows-preview.md

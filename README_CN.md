@@ -2,12 +2,12 @@
 
 跨平台 Flutter 桌面宠物 —— 基于 Flutter Desktop（macOS / Windows / Linux），参考 LuoXiaoHeiPet 项目。
 
-当前宠物是根据提供的白猫照片重新生成的写实风格 sprite，作为透明桌面宠物运行。
+当前宠物以小团（白猫）和小美（虎斑加白）的实拍照片为参考，使用写实透明精灵图。右键点击猫咪切换角色；小团体型更厚实，显示尺寸也更大。
 
 ## 功能
 
 - **透明无边框窗口** —— 始终置顶、无标题栏
-- **写实白猫素材** —— 使用 `assets/animations/white-cat-bow.webp` 渲染
+- **写实白猫素材** —— 使用 `assets/animations/xiaotuan-v2.png` 和 `xiaomei-v2.png` 渲染
 - **点击摸摸** —— 单击播放一次短动画，然后回到静止 idle
 - **按方向拖拽** —— 拖动窗口时根据鼠标移动方向切换 left/right 行走动画
 - **更安静的 idle** —— idle 默认保持静止，不持续眨眼或循环晃动
@@ -18,7 +18,8 @@
 ```
 assets/
 └── animations/
-    └── white-cat-bow.webp   # 8 x 9 透明 sprite atlas，单格 192 x 208
+    ├── xiaotuan-v2.png     # 小团：4列4行透明精灵图
+    └── xiaomei-v2.png      # 小美：4列4行透明精灵图
 lib/
 ├── main.dart                 # 入口，初始化桌面窗口
 ├── app.dart                  # 透明 MaterialApp 根组件

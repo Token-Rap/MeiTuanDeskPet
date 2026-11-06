@@ -17,6 +17,7 @@ class PetWidget extends StatefulWidget {
 class _PetWidgetState extends State<PetWidget> {
   final PetController _controller = PetController();
 
+  PetCat _cat = PetCat.xiaotuan;
   Offset? _dragStartGlobal;
 
   @override
@@ -61,11 +62,17 @@ class _PetWidgetState extends State<PetWidget> {
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _controller.pet,
+          onSecondaryTap: () {
+            _controller.endDrag();
+            setState(() {
+              _cat = _cat == PetCat.xiaotuan ? PetCat.xiaomei : PetCat.xiaotuan;
+            });
+          },
           onPanStart: _onPanStart,
           onPanUpdate: _onPanUpdate,
           onPanEnd: _onPanEnd,
           onPanCancel: _onPanCancel,
-          child: PetView(mood: state.mood),
+          child: PetView(key: ValueKey(_cat), mood: state.mood, cat: _cat),
         );
       },
     );

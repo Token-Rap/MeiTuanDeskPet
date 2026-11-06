@@ -24,4 +24,18 @@ void main() {
     expect(find.byType(PetView), findsOneWidget);
     expect(find.byType(CustomPaint), findsOneWidget);
   });
+  testWidgets('switching cats loads the smaller Xiaomei sprite', (tester) async {
+    Widget view(PetCat cat) => MaterialApp(
+      home: Scaffold(body: Center(child: PetView(mood: PetMood.idle, cat: cat))),
+    );
+    await tester.pumpWidget(view(PetCat.xiaotuan));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(CustomPaint)).width, 208);
+
+    await tester.pumpWidget(view(PetCat.xiaomei));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(CustomPaint)).width, 184);
+    expect(tester.takeException(), isNull);
+  });
+
 }

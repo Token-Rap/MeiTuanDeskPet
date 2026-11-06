@@ -8,10 +8,12 @@ class PetController extends ValueNotifier<PetState> {
   PetController() : super(PetState.initial);
 
   static const Duration _petDuration = Duration(milliseconds: 1200);
-  static const double _dragDirectionThreshold = 18;
+  static const double _dragDirectionThreshold = 3;
 
   Timer? _revertTimer;
-  PetMood? _lockedDragMood;
+  double _directionDistance = 0;
+  bool _dragging = false;
+  PetMood _facing = PetMood.draggingRight;
 
   void pet() {
     _revertTimer?.cancel();
@@ -21,24 +23,31 @@ class PetController extends ValueNotifier<PetState> {
     });
   }
 
-  void startDrag() {
+  void startDrag({double deltaX = 0}) {
     _revertTimer?.cancel();
-    _lockedDragMood = null;
-    value = value.copyWith(mood: PetMood.draggingRight);
+    _directionDistance = 0;
+    _dragging = true;
+    if (deltaX != 0) {
+      _facing = deltaX < 0 ? PetMood.draggingLeft : PetMood.draggingRight;
+    }
+    value = value.copyWith(mood: _facing);
   }
 
-  void updateDrag(double totalDeltaX) {
-    if (_lockedDragMood == null &&
-        totalDeltaX.abs() >= _dragDirectionThreshold) {
-      _lockedDragMood =
-          totalDeltaX < 0 ? PetMood.draggingLeft : PetMood.draggingRight;
-      value = value.copyWith(mood: _lockedDragMood);
-    }
+  /// Incremental screen-space movement, rather than distance from drag start.
+  void updateDrag(double deltaX) {
+    if (!_dragging || deltaX == 0) return;
+    if (_directionDistance.sign != deltaX.sign) _directionDistance = 0;
+    _directionDistance += deltaX;
+    if (_directionDistance.abs() < _dragDirectionThreshold) return;
+    final facing = deltaX < 0 ? PetMood.draggingLeft : PetMood.draggingRight;
+    _facing = facing;
+    if (value.mood != facing) value = value.copyWith(mood: facing);
   }
 
   void endDrag() {
     _revertTimer?.cancel();
-    _lockedDragMood = null;
+    _dragging = false;
+    _directionDistance = 0;
     value = value.copyWith(mood: PetMood.idle);
   }
 

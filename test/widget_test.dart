@@ -37,6 +37,9 @@ void main() {
 
     expect(find.byType(PetView), findsOneWidget);
     expect(petPaint, findsOneWidget);
+    final dynamic painter = tester.widget<CustomPaint>(petPaint).painter;
+    expect(painter.petting, isTrue);
+    expect(painter.sleeping, isFalse);
   });
   testWidgets('switching cats loads the smaller Xiaomei sprite', (tester) async {
     Widget view(PetCat cat) => MaterialApp(

@@ -9,7 +9,7 @@ import 'pet_state.dart';
 import 'sprite_layout.dart';
 
 enum PetCat {
-  xiaotuan('小团', 'assets/animations/xiaotuan-v2.png', 'assets/animations/xiaotuan-sleep-v3.png', 166),
+  xiaotuan('小团', 'assets/animations/xiaotuan-v2.png', 'assets/animations/xiaotuan-sleep-v4.png', 166),
   xiaomei('小美', 'assets/animations/xiaomei-v2.png', 'assets/animations/xiaomei-sleep-v3.png', 148);
 
   const PetCat(this.label, this.asset, this.sleepAsset, this.displaySize);
@@ -159,7 +159,11 @@ class _PetViewState extends State<PetView>
             return CustomPaint(
               size: Size.square(widget.cat.displaySize),
               painter: _PetSpritePainter(
-                spritesheet: widget.mood == PetMood.idle ? images.sleep : images.main,
+                spritesheet: widget.mood == PetMood.idle
+                    ? images.sleep
+                    : widget.mood == PetMood.petted && images.petted != null
+                        ? images.petted! : images.main,
+                petting: widget.mood == PetMood.petted && images.petted != null,
                 sleeping: widget.mood == PetMood.idle,
                 breath: _isPlayingIdleSleepMotion
                     ? math.sin(_controller.value * math.pi) * 0.015
@@ -179,7 +183,10 @@ class _PetViewState extends State<PetView>
   Future<_CatImages> _loadCatImages() async {
     final main = await _loadImage(widget.cat.asset);
     final sleep = await _loadImage(widget.cat.sleepAsset);
-    return _CatImages(main, sleep);
+    final petted = widget.cat == PetCat.xiaotuan
+        ? await _loadImage('assets/animations/xiaotuan-petted-v4.png')
+        : null;
+    return _CatImages(main, sleep, petted);
   }
 
   Future<ui.Image> _loadImage(String asset) async {
@@ -194,6 +201,7 @@ class _PetSpritePainter extends CustomPainter {
   const _PetSpritePainter({
     required this.spritesheet,
     required this.sleeping,
+    required this.petting,
     required this.breath,
     required this.row,
     required this.frame,
@@ -203,6 +211,7 @@ class _PetSpritePainter extends CustomPainter {
 
   final ui.Image spritesheet;
   final bool sleeping;
+  final bool petting;
   final double breath;
   final int row;
   final int frame;
@@ -211,6 +220,28 @@ class _PetSpritePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (cat == PetCat.xiaotuan && (sleeping || petting)) {
+      // Bounds measured from the alpha silhouettes, padded to preserve whiskers.
+      // Use one body width and one ground line instead of stretching cell grids.
+      const bounds = [
+        Rect.fromLTRB(26, 129, 587, 544),
+        Rect.fromLTRB(647, 126, 1209, 544),
+        Rect.fromLTRB(24, 706, 588, 1150),
+        Rect.fromLTRB(648, 720, 1211, 1148),
+      ];
+      final source = sleeping ? const Rect.fromLTRB(24, 66, 1737, 861) : bounds[frame];
+      final scale = size.width * 0.94 / (sleeping ? 1713 : 564);
+      final height = source.height * scale * (1 + (sleeping ? breath : 0));
+      final destination = Rect.fromLTWH(
+        (size.width - source.width * scale) / 2,
+        size.height * 0.94 - height,
+        source.width * scale,
+        height,
+      );
+      canvas.drawImageRect(spritesheet, source, destination,
+          Paint()..filterQuality = FilterQuality.medium);
+      return;
+    }
     if (sleeping) {
       final source = Rect.fromLTWH(0, 0,
           spritesheet.width.toDouble(), spritesheet.height.toDouble());
@@ -259,6 +290,7 @@ class _PetSpritePainter extends CustomPainter {
   bool shouldRepaint(_PetSpritePainter oldDelegate) {
     return oldDelegate.spritesheet != spritesheet ||
         oldDelegate.sleeping != sleeping ||
+        oldDelegate.petting != petting ||
         oldDelegate.breath != breath ||
         oldDelegate.row != row ||
         oldDelegate.frame != frame ||
@@ -286,7 +318,8 @@ class _AnimationSpec {
 }
 
 class _CatImages {
-  const _CatImages(this.main, this.sleep);
+  const _CatImages(this.main, this.sleep, this.petted);
   final ui.Image main;
   final ui.Image sleep;
+  final ui.Image? petted;
 }

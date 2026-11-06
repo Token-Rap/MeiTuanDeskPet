@@ -47,6 +47,7 @@ bool FlutterWindow::OnCreate() {
       RegGetValueW(HKEY_CURRENT_USER, L"Software\\MeiTuanDeskPet", L"AutomaticUpdates",
                    RRF_RT_REG_DWORD, nullptr, &automatic, &size);
       automatic_ = automatic != 0;
+      ApplyWindowIcons();
       AddTrayIcon();
       const std::string version = std::to_string(FLUTTER_VERSION_MAJOR) + "." +
           std::to_string(FLUTTER_VERSION_MINOR) + "." + std::to_string(FLUTTER_VERSION_PATCH);
@@ -90,6 +91,7 @@ bool FlutterWindow::OnCreate() {
     }
   });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+  ApplyWindowIcons();
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -101,6 +103,19 @@ bool FlutterWindow::OnCreate() {
   flutter_controller_->ForceRedraw();
 
   return true;
+}
+
+void FlutterWindow::ApplyWindowIcons() {
+  const auto module = GetModuleHandle(nullptr);
+  small_icon_ = static_cast<HICON>(LoadImageW(module, MAKEINTRESOURCEW(IDI_APP_ICON),
+      IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_SHARED));
+  large_icon_ = static_cast<HICON>(LoadImageW(module, MAKEINTRESOURCEW(IDI_APP_ICON),
+      IMAGE_ICON, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), LR_SHARED));
+  const HWND windows[] = {GetHandle(), flutter_controller_->view()->GetNativeWindow()};
+  for (HWND window : windows) {
+    SendMessageW(window, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(small_icon_));
+    SendMessageW(window, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(large_icon_));
+  }
 }
 
 void FlutterWindow::AddTrayIcon() {
@@ -196,6 +211,9 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   if (message == WM_CLOSE && !exiting_ && !installing_) {
     ShowWindow(hwnd, SW_HIDE);
     return 0;
+  }
+  if (message == WM_GETICON) {
+    return reinterpret_cast<LRESULT>(wparam == ICON_BIG ? large_icon_ : small_icon_);
   }
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {

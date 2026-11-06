@@ -27,3 +27,5 @@ im.save(root/'windows/runner/resources/app_icon.ico', sizes=[(16,16),(24,24),(32
 for path in (root/'macos/Runner/Assets.xcassets/AppIcon.appiconset').glob('app_icon_*.png'):
     size = int(path.stem.split('_')[-1])
     im.resize((size,size),Image.Resampling.LANCZOS).save(path)
+
+(root/'assets/icons/meituan.ico').write_bytes((root/'windows/runner/resources/app_icon.ico').read_bytes())

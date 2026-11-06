@@ -9,8 +9,8 @@ import 'pet_state.dart';
 import 'sprite_layout.dart';
 
 enum PetCat {
-  xiaotuan('小团', 'assets/animations/xiaotuan-v2.png', 'assets/animations/xiaotuan-sleep-v3.png', 208),
-  xiaomei('小美', 'assets/animations/xiaomei-v2.png', 'assets/animations/xiaomei-sleep-v3.png', 184);
+  xiaotuan('小团', 'assets/animations/xiaotuan-v2.png', 'assets/animations/xiaotuan-sleep-v3.png', 166),
+  xiaomei('小美', 'assets/animations/xiaomei-v2.png', 'assets/animations/xiaomei-sleep-v3.png', 148);
 
   const PetCat(this.label, this.asset, this.sleepAsset, this.displaySize);
   final String label;
@@ -142,7 +142,7 @@ class _PetViewState extends State<PetView>
       builder: (context, snapshot) {
         final images = snapshot.data;
         if (images == null) {
-          return const SizedBox.square(dimension: 208);
+          return SizedBox.square(dimension: widget.cat.displaySize);
         }
 
         return AnimatedBuilder(

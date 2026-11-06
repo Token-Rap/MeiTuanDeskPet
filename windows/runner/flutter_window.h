@@ -27,6 +27,9 @@ class FlutterWindow : public Win32Window {
                          LPARAM const lparam) noexcept override;
 
  private:
+  void ApplyWindowIcons();
+  HICON small_icon_ = nullptr;
+  HICON large_icon_ = nullptr;
   void AddTrayIcon();
   void ShowTrayMenu();
   void Notify(const std::wstring& message);

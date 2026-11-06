@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
-const Size kPetWindowSize = Size(220, 220);
+const Size kPetWindowSize = Size(180, 180);
 
 Future<void> initDesktopWindow() async {
   WidgetsFlutterBinding.ensureInitialized();

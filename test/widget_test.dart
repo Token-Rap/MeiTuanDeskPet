@@ -44,11 +44,11 @@ void main() {
     );
     await tester.pumpWidget(view(PetCat.xiaotuan));
     await waitForSprite(tester);
-    expect(tester.getSize(petPaint).width, 208);
+    expect(tester.getSize(petPaint).width, 166);
 
     await tester.pumpWidget(view(PetCat.xiaomei));
     await waitForSprite(tester);
-    expect(tester.getSize(petPaint).width, 184);
+    expect(tester.getSize(petPaint).width, 148);
     expect(tester.takeException(), isNull);
   });
 

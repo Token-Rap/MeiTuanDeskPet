@@ -156,13 +156,17 @@ class _PetViewState extends State<PetView>
             final currentFrame = spec.loops
                 ? currentRawFrame % spec.frames
                 : currentRawFrame.clamp(0, spec.frames - 1);
+            final isWalking = widget.mood == PetMood.draggingLeft ||
+                widget.mood == PetMood.draggingRight;
             return CustomPaint(
               size: Size.square(widget.cat.displaySize),
               painter: _PetSpritePainter(
                 spritesheet: widget.mood == PetMood.idle
                     ? images.sleep
                     : widget.mood == PetMood.petted && images.petted != null
-                        ? images.petted! : images.main,
+                        ? images.petted!
+                        : isWalking && images.walking != null ? images.walking! : images.main,
+                walking: isWalking && images.walking != null,
                 petting: widget.mood == PetMood.petted && images.petted != null,
                 sleeping: widget.mood == PetMood.idle,
                 breath: _isPlayingIdleSleepMotion
@@ -186,7 +190,10 @@ class _PetViewState extends State<PetView>
     final petted = widget.cat == PetCat.xiaotuan
         ? await _loadImage('assets/animations/xiaotuan-petted-v4.png')
         : null;
-    return _CatImages(main, sleep, petted);
+    final walking = widget.cat == PetCat.xiaotuan
+        ? await _loadImage('assets/animations/xiaotuan-walk-v5.png')
+        : null;
+    return _CatImages(main, sleep, petted, walking);
   }
 
   Future<ui.Image> _loadImage(String asset) async {
@@ -202,6 +209,7 @@ class _PetSpritePainter extends CustomPainter {
     required this.spritesheet,
     required this.sleeping,
     required this.petting,
+    required this.walking,
     required this.breath,
     required this.row,
     required this.frame,
@@ -212,6 +220,7 @@ class _PetSpritePainter extends CustomPainter {
   final ui.Image spritesheet;
   final bool sleeping;
   final bool petting;
+  final bool walking;
   final double breath;
   final int row;
   final int frame;
@@ -220,6 +229,30 @@ class _PetSpritePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (walking) {
+      const bounds = [
+        Rect.fromLTRB(49, 127, 565, 498),
+        Rect.fromLTRB(671, 127, 1191, 497),
+        Rect.fromLTRB(41, 754, 565, 1124),
+        Rect.fromLTRB(661, 753, 1191, 1123),
+      ];
+      final source = bounds[frame];
+      final scale = size.width * 0.9 / 530;
+      final destination = Rect.fromLTWH(
+        (size.width - source.width * scale) / 2,
+        size.height * 0.94 - source.height * scale,
+        source.width * scale, source.height * scale,
+      );
+      canvas.save();
+      if (flip) {
+        canvas.translate(size.width, 0);
+        canvas.scale(-1, 1);
+      }
+      canvas.drawImageRect(spritesheet, source, destination,
+          Paint()..filterQuality = FilterQuality.medium);
+      canvas.restore();
+      return;
+    }
     if (cat == PetCat.xiaotuan && (sleeping || petting)) {
       // Bounds measured from the alpha silhouettes, padded to preserve whiskers.
       // Use one body width and one ground line instead of stretching cell grids.
@@ -291,6 +324,7 @@ class _PetSpritePainter extends CustomPainter {
     return oldDelegate.spritesheet != spritesheet ||
         oldDelegate.sleeping != sleeping ||
         oldDelegate.petting != petting ||
+        oldDelegate.walking != walking ||
         oldDelegate.breath != breath ||
         oldDelegate.row != row ||
         oldDelegate.frame != frame ||
@@ -318,8 +352,9 @@ class _AnimationSpec {
 }
 
 class _CatImages {
-  const _CatImages(this.main, this.sleep, this.petted);
+  const _CatImages(this.main, this.sleep, this.petted, this.walking);
   final ui.Image main;
   final ui.Image sleep;
   final ui.Image? petted;
+  final ui.Image? walking;
 }

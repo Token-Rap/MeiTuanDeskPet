@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -69,6 +70,45 @@ void main() {
     expect(painter.sleeping, isTrue);
     expect(identical(painter.spritesheet, sleepImage), isTrue);
     expect(painter.breath, greaterThan(0));
+  });
+
+  testWidgets('new walking artwork mirrors pixels for left dragging', (tester) async {
+    Widget view(PetMood mood) => MaterialApp(
+      home: Scaffold(body: Center(child: PetView(mood: mood))),
+    );
+    await tester.pumpWidget(view(PetMood.draggingRight));
+    await waitForSprite(tester);
+    final right = tester.widget<CustomPaint>(petPaint).painter!;
+    expect((right as dynamic).walking, isTrue);
+    await tester.pumpWidget(view(PetMood.draggingLeft));
+    final left = tester.widget<CustomPaint>(petPaint).painter!;
+    await tester.runAsync(() async {
+      Future<List<int>> render(CustomPainter painter) async {
+        final recorder = ui.PictureRecorder();
+        painter.paint(Canvas(recorder), const Size(166, 166));
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(166, 166);
+        final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        final pixels = data!.buffer.asUint8List().toList();
+        image.dispose();
+        picture.dispose();
+        return pixels;
+      }
+      final a = await render(right);
+      final b = await render(left);
+      var visible = 0;
+      for (var y = 0; y < 166; y += 5) {
+        for (var x = 0; x < 166; x += 5) {
+          final normal = (y * 166 + x) * 4;
+          final mirrored = (y * 166 + 165 - x) * 4;
+          if (a[normal + 3] > 128) visible++;
+          for (var channel = 0; channel < 4; channel++) {
+            expect((a[normal + channel] - b[mirrored + channel]).abs(), lessThanOrEqualTo(16));
+          }
+        }
+      }
+      expect(visible, greaterThan(20));
+    });
   });
 
 }

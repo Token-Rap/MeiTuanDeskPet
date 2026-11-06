@@ -135,6 +135,9 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Test update manifest
+        run: python -m unittest discover -s test -p "*_test.py"
+
       - name: Build Windows app
         run: flutter build windows --release --build-name "$env:APP_VERSION" --build-number "${{ github.run_number }}"
 
@@ -155,6 +158,10 @@ jobs:
             -Path "dist/windows/MeiTuanDeskPet-windows-x64-setup.exe" `
             -Destination "dist/windows/MeiTuanDeskPet-windows-x64-setup-$env:RELEASE_VERSION.exe" `
             -Force
+
+      - name: Generate Windows update manifest
+        shell: pwsh
+        run: python scripts/windows_update_manifest.py --version "$env:APP_VERSION" --build "${{ github.run_number }}" --tag "$env:RELEASE_VERSION"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4

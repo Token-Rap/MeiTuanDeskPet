@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../desktop/desktop_shell.dart';
 import 'pet_controller.dart';
 import 'pet_state.dart';
 import 'pet_view.dart';
@@ -28,6 +29,7 @@ class _PetWidgetState extends State<PetWidget> with WindowListener {
   @override
   void initState() {
     super.initState();
+    DesktopShell.instance.onSwitchCat = _switchCat;
     if (_isDesktop) windowManager.addListener(this);
   }
 
@@ -60,6 +62,7 @@ class _PetWidgetState extends State<PetWidget> with WindowListener {
   void dispose() {
     if (_isDesktop) windowManager.removeListener(this);
     _dragSession++;
+    DesktopShell.instance.onSwitchCat = null;
     _controller.dispose();
     super.dispose();
   }
@@ -110,6 +113,13 @@ class _PetWidgetState extends State<PetWidget> with WindowListener {
     _controller.endDrag();
   }
 
+  void _switchCat() {
+    _controller.endDrag();
+    setState(() {
+      _cat = _cat == PetCat.xiaotuan ? PetCat.xiaomei : PetCat.xiaotuan;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<PetState>(
@@ -118,12 +128,7 @@ class _PetWidgetState extends State<PetWidget> with WindowListener {
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _controller.pet,
-          onSecondaryTap: () {
-            _controller.endDrag();
-            setState(() {
-              _cat = _cat == PetCat.xiaotuan ? PetCat.xiaomei : PetCat.xiaotuan;
-            });
-          },
+          onSecondaryTap: _switchCat,
           onPanDown: (details) => _dragStartGlobal = details.globalPosition,
           onPanStart: _onPanStart,
           onPanUpdate: _onPanUpdate,

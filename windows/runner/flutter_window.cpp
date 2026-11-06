@@ -186,6 +186,13 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     if (lparam == NIN_BALLOONUSERCLICK && desktop_channel_) desktop_channel_->InvokeMethod("checkUpdate", nullptr);
     return 0;
   }
+  // Let Windows Restart Manager close the running image during an update.
+  if (message == WM_QUERYENDSESSION) return TRUE;
+  if (message == WM_ENDSESSION && wparam && (lparam & ENDSESSION_CLOSEAPP)) {
+    exiting_ = true;
+    Destroy();
+    return 0;
+  }
   if (message == WM_CLOSE && !exiting_ && !installing_) {
     ShowWindow(hwnd, SW_HIDE);
     return 0;

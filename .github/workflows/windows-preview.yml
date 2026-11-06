@@ -43,3 +43,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v0.2.0-preview.${GITHUB_RUN_NUMBER}" dist/windows/* --target "$GITHUB_SHA" --prerelease --title "Windows 双猫预览 ${GITHUB_RUN_NUMBER}" --notes-file release-notes/windows-preview.md
+      - name: Verify automatic update from a lower build
+        run: ./scripts/windows_update_smoke.ps1 -ExpectedBuild ${{ github.run_number }}

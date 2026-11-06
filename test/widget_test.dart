@@ -4,37 +4,51 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meituan_desk_pet/pet/pet_state.dart';
 import 'package:meituan_desk_pet/pet/pet_view.dart';
 
+final petPaint = find.descendant(
+  of: find.byType(PetView),
+  matching: find.byType(CustomPaint),
+);
+
+Future<void> waitForSprite(WidgetTester tester) async {
+  for (var attempt = 0; attempt < 100; attempt++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    if (petPaint.evaluate().isNotEmpty) return;
+  }
+  fail('Cat sprite did not load within five seconds');
+}
+
 void main() {
   testWidgets('PetView renders idle sprite by default', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: PetView(mood: PetMood.idle)),
     ));
-    await tester.pumpAndSettle();
+    await waitForSprite(tester);
 
     expect(find.byType(PetView), findsOneWidget);
-    expect(find.byType(CustomPaint), findsOneWidget);
+    expect(petPaint, findsOneWidget);
   });
 
   testWidgets('PetView renders petted sprite', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: PetView(mood: PetMood.petted)),
     ));
-    await tester.pumpAndSettle();
+    await waitForSprite(tester);
 
     expect(find.byType(PetView), findsOneWidget);
-    expect(find.byType(CustomPaint), findsOneWidget);
+    expect(petPaint, findsOneWidget);
   });
   testWidgets('switching cats loads the smaller Xiaomei sprite', (tester) async {
     Widget view(PetCat cat) => MaterialApp(
       home: Scaffold(body: Center(child: PetView(mood: PetMood.idle, cat: cat))),
     );
     await tester.pumpWidget(view(PetCat.xiaotuan));
-    await tester.pumpAndSettle();
-    expect(tester.getSize(find.byType(CustomPaint)).width, 208);
+    await waitForSprite(tester);
+    expect(tester.getSize(petPaint).width, 208);
 
     await tester.pumpWidget(view(PetCat.xiaomei));
-    await tester.pumpAndSettle();
-    expect(tester.getSize(find.byType(CustomPaint)).width, 184);
+    await waitForSprite(tester);
+    expect(tester.getSize(petPaint).width, 184);
     expect(tester.takeException(), isNull);
   });
 

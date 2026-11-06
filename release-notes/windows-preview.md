@@ -6,3 +6,5 @@
 
 Windows x64：下载 setup.exe 安装，或下载 preview.zip 后完整解压，运行 meituan_desk_pet.exe。
 这是供实际效果检查的预览版本；安装包未签名，尚未完成真人 Windows 视觉验收。
+
+拖动修复：按素材实际比例绘制，统一脚底基线，四周增加留白；Windows 原生拖动取消 Flutter 手势时保持行走姿势，松手后再恢复。

@@ -19,6 +19,7 @@ class _PetWidgetState extends State<PetWidget> {
 
   PetCat _cat = PetCat.xiaotuan;
   Offset? _dragStartGlobal;
+  bool _nativeDragging = false;
 
   @override
   void dispose() {
@@ -30,10 +31,20 @@ class _PetWidgetState extends State<PetWidget> {
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
   Future<void> _onPanStart(DragStartDetails details) async {
+    final pressPosition = _dragStartGlobal ?? details.globalPosition;
     _controller.startDrag();
-    _dragStartGlobal = details.globalPosition;
+    _controller.updateDrag(details.globalPosition.dx - pressPosition.dx);
     if (_isDesktop) {
-      await windowManager.startDragging();
+      _nativeDragging = Platform.isWindows;
+      try {
+        await windowManager.startDragging();
+      } finally {
+        _nativeDragging = false;
+        if (mounted && Platform.isWindows) {
+          _dragStartGlobal = null;
+          _controller.endDrag();
+        }
+      }
     }
   }
 
@@ -45,11 +56,13 @@ class _PetWidgetState extends State<PetWidget> {
   }
 
   void _onPanEnd(DragEndDetails _) {
+    if (_nativeDragging) return;
     _dragStartGlobal = null;
     _controller.endDrag();
   }
 
   void _onPanCancel() {
+    if (_nativeDragging) return;
     _dragStartGlobal = null;
     _controller.endDrag();
   }
@@ -68,6 +81,7 @@ class _PetWidgetState extends State<PetWidget> {
               _cat = _cat == PetCat.xiaotuan ? PetCat.xiaomei : PetCat.xiaotuan;
             });
           },
+          onPanDown: (details) => _dragStartGlobal = details.globalPosition,
           onPanStart: _onPanStart,
           onPanUpdate: _onPanUpdate,
           onPanEnd: _onPanEnd,

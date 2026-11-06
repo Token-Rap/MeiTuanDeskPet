@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'pet_state.dart';
+import 'sprite_layout.dart';
 
 enum PetCat {
   xiaotuan('小团', 'assets/animations/xiaotuan-v2.png', 208),
@@ -194,48 +195,36 @@ class _PetSpritePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final fitted = applyBoxFit(
-      BoxFit.contain,
-      Size(spritesheet.width / 4, spritesheet.height / 4),
-      size,
+    // Keep a single source-pixel scale across poses. The atlas rows have
+    // different heights; stretching every row into a square distorts the cat.
+    final rowEdges = cat == PetCat.xiaotuan
+        ? const [0.0, 0.265, 0.52, 0.76, 1.0]
+        : const [0.0, 0.25, 0.51, 0.76, 1.0];
+    final groundLines = cat == PetCat.xiaotuan
+        ? const [320.0, 634.0, 892.0, 1181.0]
+        : const [310.0, 628.0, 884.0, 1185.0];
+    final source = Rect.fromLTWH(
+      (frame % _kAtlasColumns) * (spritesheet.width / 4),
+      rowEdges[row] * spritesheet.height,
+      spritesheet.width / 4,
+      (rowEdges[row + 1] - rowEdges[row]) * spritesheet.height,
     );
-    final destination = Alignment.center.inscribe(
-      fitted.destination,
-      Offset.zero & size,
+    final ground = groundLines[row] / 1254 * spritesheet.height;
+    final destination = spriteDestination(
+      source, ground, size, spritesheet.width / 4,
     );
-
     canvas.save();
     if (flip) {
       canvas.translate(size.width, 0);
       canvas.scale(-1, 1);
     }
-    _drawFrame(canvas, destination, frame, 1);
-    canvas.restore();
-  }
-
-  void _drawFrame(
-    Canvas canvas,
-    Rect destination,
-    int frame,
-    double opacity,
-  ) {
-    // Generated rows have slightly different vertical spacing. Use their
-    // measured boundaries so paws are not cut at an assumed quarter line.
-    final rowEdges = cat == PetCat.xiaotuan
-        ? const [0.0, 0.265, 0.52, 0.76, 1.0]
-        : const [0.0, 0.25, 0.51, 0.76, 1.0];
-    final source = Rect.fromLTWH(
-      (frame % _kAtlasColumns) * (spritesheet.width / 4),
-      rowEdges[row] * spritesheet.height,
-      (spritesheet.width / 4),
-      (rowEdges[row + 1] - rowEdges[row]) * spritesheet.height,
-    );
     canvas.drawImageRect(
       spritesheet,
       source,
       destination,
-      Paint()..color = Color.fromRGBO(255, 255, 255, opacity),
+      Paint()..filterQuality = FilterQuality.medium,
     );
+    canvas.restore();
   }
 
   @override

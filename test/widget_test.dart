@@ -52,4 +52,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('idle breathing keeps the approved sleep image', (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(body: Center(child: PetView(mood: PetMood.idle))),
+    ));
+    await waitForSprite(tester);
+    dynamic painter = tester.widget<CustomPaint>(petPaint).painter;
+    final sleepImage = painter.spritesheet;
+    expect(painter.sleeping, isTrue);
+    await tester.pump(const Duration(minutes: 25));
+    await tester.pump(const Duration(milliseconds: 520));
+    painter = tester.widget<CustomPaint>(petPaint).painter;
+    expect(painter.sleeping, isTrue);
+    expect(identical(painter.spritesheet, sleepImage), isTrue);
+    expect(painter.breath, greaterThan(0));
+  });
+
 }

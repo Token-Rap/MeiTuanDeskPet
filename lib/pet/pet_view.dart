@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -8,12 +9,13 @@ import 'pet_state.dart';
 import 'sprite_layout.dart';
 
 enum PetCat {
-  xiaotuan('小团', 'assets/animations/xiaotuan-v2.png', 208),
-  xiaomei('小美', 'assets/animations/xiaomei-v2.png', 184);
+  xiaotuan('小团', 'assets/animations/xiaotuan-v2.png', 'assets/animations/xiaotuan-sleep-v3.png', 208),
+  xiaomei('小美', 'assets/animations/xiaomei-v2.png', 'assets/animations/xiaomei-sleep-v3.png', 184);
 
-  const PetCat(this.label, this.asset, this.displaySize);
+  const PetCat(this.label, this.asset, this.sleepAsset, this.displaySize);
   final String label;
   final String asset;
+  final String sleepAsset;
   final double displaySize;
 }
 
@@ -33,7 +35,7 @@ class PetView extends StatefulWidget {
 class _PetViewState extends State<PetView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late Future<ui.Image> _spritesheet;
+  late Future<_CatImages> _spritesheet;
   Timer? _idleSleepTimer;
   bool _isPlayingIdleSleepMotion = false;
 
@@ -62,7 +64,7 @@ class _PetViewState extends State<PetView>
   @override
   void initState() {
     super.initState();
-    _spritesheet = _loadImage(widget.cat.asset);
+    _spritesheet = _loadCatImages();
     _controller = AnimationController(
       vsync: this,
       duration: _spec.duration,
@@ -74,7 +76,7 @@ class _PetViewState extends State<PetView>
   void didUpdateWidget(PetView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.cat != widget.cat) {
-      _spritesheet = _loadImage(widget.cat.asset);
+      _spritesheet = _loadCatImages();
     }
     if (oldWidget.mood == widget.mood && oldWidget.cat == widget.cat) return;
     _syncAnimation();
@@ -135,11 +137,11 @@ class _PetViewState extends State<PetView>
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ui.Image>(
+    return FutureBuilder<_CatImages>(
       future: _spritesheet,
       builder: (context, snapshot) {
-        final spritesheet = snapshot.data;
-        if (spritesheet == null) {
+        final images = snapshot.data;
+        if (images == null) {
           return const SizedBox.square(dimension: 208);
         }
 
@@ -157,7 +159,11 @@ class _PetViewState extends State<PetView>
             return CustomPaint(
               size: Size.square(widget.cat.displaySize),
               painter: _PetSpritePainter(
-                spritesheet: spritesheet,
+                spritesheet: widget.mood == PetMood.idle ? images.sleep : images.main,
+                sleeping: widget.mood == PetMood.idle,
+                breath: _isPlayingIdleSleepMotion
+                    ? math.sin(_controller.value * math.pi) * 0.015
+                    : 0,
                 row: spec.row,
                 frame: currentFrame,
                 flip: widget.mood == PetMood.draggingLeft,
@@ -168,6 +174,12 @@ class _PetViewState extends State<PetView>
         );
       },
     );
+  }
+
+  Future<_CatImages> _loadCatImages() async {
+    final main = await _loadImage(widget.cat.asset);
+    final sleep = await _loadImage(widget.cat.sleepAsset);
+    return _CatImages(main, sleep);
   }
 
   Future<ui.Image> _loadImage(String asset) async {
@@ -181,6 +193,8 @@ class _PetViewState extends State<PetView>
 class _PetSpritePainter extends CustomPainter {
   const _PetSpritePainter({
     required this.spritesheet,
+    required this.sleeping,
+    required this.breath,
     required this.row,
     required this.frame,
     required this.flip,
@@ -188,6 +202,8 @@ class _PetSpritePainter extends CustomPainter {
   });
 
   final ui.Image spritesheet;
+  final bool sleeping;
+  final double breath;
   final int row;
   final int frame;
   final bool flip;
@@ -195,6 +211,18 @@ class _PetSpritePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (sleeping) {
+      final source = Rect.fromLTWH(0, 0,
+          spritesheet.width.toDouble(), spritesheet.height.toDouble());
+      final width = size.width * 0.98;
+      final height = width * source.height / source.width * (1 + breath);
+      final destination = Rect.fromLTWH(
+        (size.width - width) / 2, size.height * 0.94 - height, width, height,
+      );
+      canvas.drawImageRect(spritesheet, source, destination,
+          Paint()..filterQuality = FilterQuality.medium);
+      return;
+    }
     // Keep a single source-pixel scale across poses. The atlas rows have
     // different heights; stretching every row into a square distorts the cat.
     final rowEdges = cat == PetCat.xiaotuan
@@ -230,6 +258,8 @@ class _PetSpritePainter extends CustomPainter {
   @override
   bool shouldRepaint(_PetSpritePainter oldDelegate) {
     return oldDelegate.spritesheet != spritesheet ||
+        oldDelegate.sleeping != sleeping ||
+        oldDelegate.breath != breath ||
         oldDelegate.row != row ||
         oldDelegate.frame != frame ||
         oldDelegate.flip != flip ||
@@ -253,4 +283,10 @@ class _AnimationSpec {
   bool get isAnimated => frames > 1;
 
   Duration get duration => frameDuration * frames;
+}
+
+class _CatImages {
+  const _CatImages(this.main, this.sleep);
+  final ui.Image main;
+  final ui.Image sleep;
 }

@@ -11,11 +11,11 @@ Future<void> initDesktopWindow() async {
 
   await windowManager.ensureInitialized();
 
-  const options = WindowOptions(
+  final options = WindowOptions(
     size: kPetWindowSize,
     minimumSize: kPetWindowSize,
     backgroundColor: Color(0x00000000),
-    skipTaskbar: false,
+    skipTaskbar: Platform.isWindows,
     titleBarStyle: TitleBarStyle.hidden,
     alwaysOnTop: true,
   );
